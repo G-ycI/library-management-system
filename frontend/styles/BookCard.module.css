@@ -1,0 +1,81 @@
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.cardContent {
+  padding: 20px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #1a1a2e;
+}
+
+.author {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.category {
+  display: inline-block;
+  background-color: #e8f4fd;
+  color: #2196f3;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.inStock {
+  color: #4caf50;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.outOfStock {
+  color: #f44336;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.copies {
+  font-size: 13px;
+  color: #888;
+}
+
+.description {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.detailLink {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.detailLink:hover {
+  color: #764ba2;
+}
