@@ -5,6 +5,16 @@ import Link from 'next/link';
 import Header from '../../components/Header';
 import styles from '../../styles/AddBook.module.css';
 
+const CATEGORIES = [
+  '编程', '文学', '历史', '科学', '小说', '教育', '艺术', '经济',
+  '哲学', '传记', '计算机', '数学', '物理', '化学', '生物', '医学',
+  '法律', '心理', '社会', '政治', '军事', '地理', '天文', '音乐',
+  '电影', '摄影', '美食', '旅行', '运动', '游戏', '漫画', '童话',
+  '诗歌', '散文', '戏剧', '语言', '宗教', '建筑', '设计', '管理',
+  '营销', '金融', '投资', '会计', '农业', '工业', '交通', '环境',
+  '宠物', '育儿', '养生',
+];
+
 export default function AddBook() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -18,17 +28,45 @@ export default function AddBook() {
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [customCategory, setCustomCategory] = useState(false);
+  const [showCopiesAlert, setShowCopiesAlert] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       [name]: name === 'total_copies' || name === 'available_copies'
         ? parseInt(value) || 0
         : value,
-    }));
+    };
+
+    if (name === 'available_copies' && newFormData.available_copies > newFormData.total_copies) {
+      setShowCopiesAlert(true);
+      setTimeout(() => setShowCopiesAlert(false), 2000);
+    }
+
+    if (name === 'total_copies' && newFormData.available_copies > newFormData.total_copies) {
+      newFormData.available_copies = newFormData.total_copies;
+    }
+
+    setFormData(newFormData);
+
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleCategoryChange = (e) => {
+    const value = e.target.value;
+    if (value === '__custom__') {
+      setCustomCategory(true);
+      setFormData((prev) => ({ ...prev, category: '' }));
+    } else {
+      setCustomCategory(false);
+      setFormData((prev) => ({ ...prev, category: value }));
+    }
+    if (errors.category) {
+      setErrors((prev) => ({ ...prev, category: '' }));
     }
   };
 
@@ -70,8 +108,11 @@ export default function AddBook() {
       const data = await res.json();
 
       if (res.ok) {
-        alert('图书添加成功！');
-        router.push(`/books/${data.book.id}`);
+        if (data && data.book && data.book.id) {
+          router.push(`/books/${data.book.id}`);
+        } else {
+          router.push('/');
+        }
       } else {
         if (data.error) {
           alert(data.error);
@@ -158,14 +199,44 @@ export default function AddBook() {
 
                 <div className={styles.formGroup}>
                   <label className={styles.label}>分类</label>
-                  <input
-                    type="text"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleChange}
-                    className={styles.input}
-                    placeholder="如：编程、文学、历史"
-                  />
+                  {!customCategory ? (
+                    <select
+                      name="category"
+                      value={formData.category || ''}
+                      onChange={handleCategoryChange}
+                      className={styles.select}
+                    >
+                      <option value="">请选择分类</option>
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                      <option value="__custom__">+ 自定义分类</option>
+                    </select>
+                  ) : (
+                    <div className={styles.customCategoryWrap}>
+                      <input
+                        type="text"
+                        name="category"
+                        value={formData.category}
+                        onChange={handleChange}
+                        className={styles.input}
+                        placeholder="请输入自定义分类名称"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        className={styles.backToSelectBtn}
+                        onClick={() => {
+                          setCustomCategory(false);
+                          setFormData((prev) => ({ ...prev, category: '' }));
+                        }}
+                      >
+                        返回选择
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -189,16 +260,23 @@ export default function AddBook() {
 
                 <div className={styles.formGroup}>
                   <label className={styles.label}>可借数量</label>
-                  <input
-                    type="number"
-                    name="available_copies"
-                    value={formData.available_copies}
-                    onChange={handleChange}
-                    className={`${styles.input} ${
-                      errors.available_copies ? styles.inputError : ''
-                    }`}
-                    min="0"
-                  />
+                  <div className={styles.inputWrap}>
+                    <input
+                      type="number"
+                      name="available_copies"
+                      value={formData.available_copies}
+                      onChange={handleChange}
+                      className={`${styles.input} ${
+                        errors.available_copies ? styles.inputError : ''
+                      }`}
+                      min="0"
+                    />
+                    {showCopiesAlert && (
+                      <div className={styles.copiesAlert}>
+                        ⚠ 可借数量不能大于馆藏数量
+                      </div>
+                    )}
+                  </div>
                   {errors.available_copies && (
                     <p className={styles.errorText}>
                       {errors.available_copies}

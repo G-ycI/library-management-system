@@ -103,14 +103,14 @@ export default function Home() {
 
           {loading ? (
             <div className={styles.loading}>加载中...</div>
-          ) : books.length === 0 ? (
+          ) : (!books || books.length === 0) ? (
             <div className={styles.empty}>
               <p>暂无图书数据</p>
             </div>
           ) : (
             <>
               <div className={styles.bookGrid}>
-                {books.map((book) => (
+                {books.filter(book => book && book.id).map((book) => (
                   <BookCard key={book.id} book={book} />
                 ))}
               </div>

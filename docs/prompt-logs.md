@@ -432,6 +432,239 @@ API接口文档要详细，包含请求方式、参数、返回示例。
 
 ---
 
+## Prompt 8：删除图书密码验证功能
+
+**对应功能**：删除操作安全保护  
+**涉及文件**：`backend/routes/books.py`、`frontend/pages/books/[id].js`
+
+**Prompt 内容**：
+```
+能不能在删除图书后加一个密码，输入正确才可以删除，密码为20040611
+```
+
+**AI 返回结果**：
+```python
+# backend/routes/books.py - 删除接口添加密码验证
+@books_bp.route("/<int:book_id>", methods=["DELETE"])
+def delete_book(book_id):
+    data = request.get_json() or {}
+    password = data.get("password", "")
+    if password != "20040611":
+        return jsonify({"error": "密码错误，无法删除"}), 403
+    book = Book.query.get_or_404(book_id)
+    db.session.delete(book)
+    db.session.commit()
+    return jsonify({"message": "Book deleted successfully"})
+```
+
+```jsx
+// frontend/pages/books/[id].js - 删除前弹出密码验证模态框
+const handleConfirmDelete = async () => {
+    if (!deletePassword.trim()) {
+        setDeleteError('请输入密码');
+        return;
+    }
+    setDeleting(true);
+    const res = await fetch(`/api/books/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: deletePassword }),
+    });
+    if (res.ok) {
+        router.push('/');
+    } else {
+        const data = await res.json();
+        setDeleteError(data.error || '删除失败');
+    }
+    setDeleting(false);
+};
+```
+
+---
+
+## Prompt 9：图书编辑功能（带密码验证）
+
+**对应功能**：图书编辑、编辑操作安全保护  
+**涉及文件**：`backend/routes/books.py`、`frontend/pages/books/[id].js`、`frontend/styles/BookDetail.module.css`
+
+**Prompt 内容**：
+```
+给我添加图书编辑功能，然后一样要有删除的密码才可以
+```
+
+**AI 返回结果**：
+```python
+# backend/routes/books.py - 更新接口添加密码验证
+@books_bp.route("/<int:book_id>", methods=["PUT"])
+def update_book(book_id):
+    data = request.get_json() or {}
+    password = data.get("password", "")
+    if password != "20040611":
+        return jsonify({"error": "密码错误，无法编辑"}), 403
+    book = Book.query.get_or_404(book_id)
+    # 更新字段...
+    db.session.commit()
+    return jsonify({"book": book.to_dict()})
+```
+
+```jsx
+// frontend/pages/books/[id].js - 编辑流程：密码验证 → 编辑表单 → 提交更新
+const handleEditClick = () => {
+    setShowEditPasswordModal(true);  // 先弹出密码验证
+};
+
+const handleConfirmEditPassword = async () => {
+    const res = await fetch(`/api/books/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: editPassword }),
+    });
+    if (res.status === 403) {
+        setEditPasswordError('密码错误');
+    } else {
+        setShowEditPasswordModal(false);
+        setShowEditModal(true);  // 密码正确，显示编辑表单
+    }
+};
+
+const handleSubmitEdit = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`/api/books/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...editForm, password: editPassword }),
+    });
+    if (res.ok) {
+        setShowEditModal(false);
+        fetchBook();  // 重新获取图书数据
+    }
+};
+```
+
+---
+
+## Prompt 10：整体样式优化
+
+**对应功能**：UI/UX 美化、响应式布局  
+**涉及文件**：`frontend/styles/globals.css`、`frontend/styles/Header.module.css`、`frontend/styles/Home.module.css`、`frontend/styles/BookCard.module.css`、`frontend/styles/BookDetail.module.css`、`frontend/styles/AddBook.module.css`、`frontend/components/BookCard.js`
+
+**Prompt 内容**：
+```
+帮我优化一下整体的布局，让样式更加美观
+```
+
+**AI 返回结果**：
+```css
+/* globals.css - 引入CSS变量系统，渐变背景，自定义滚动条 */
+:root {
+  --primary: #667eea;
+  --primary-dark: #764ba2;
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --radius-lg: 16px;
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+body {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf3 100%);
+}
+
+/* BookCard.module.css - 卡片悬浮动画 + 分类封面图标 */
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+.bookCover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Header.module.css - 固定导航 + 毛玻璃效果 */
+.header {
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(10px);
+}
+```
+
+```jsx
+// BookCard.js - 按分类显示不同emoji图标
+const getBookEmoji = (category) => {
+  const emojiMap = {
+    '编程': '💻', '文学': '📖', '历史': '🏛️', '科学': '🔬',
+    '小说': '📚', '教育': '🎓', '艺术': '🎨', '经济': '💰',
+    // ... 51种分类对应不同图标
+  };
+  return emojiMap[category] || '📕';
+};
+```
+
+---
+
+## Prompt 11：分类扩展与表单校验增强
+
+**对应功能**：分类选择优化、可借数量校验  
+**涉及文件**：`frontend/pages/books/add.js`、`frontend/pages/books/[id].js`、`frontend/components/BookCard.js`、`frontend/styles/AddBook.module.css`、`frontend/styles/BookDetail.module.css`
+
+**Prompt 内容**：
+```
+每一个分类图标要不一样，分类种类多一些，新增时分类可以选择也可以自己写，
+新增图书时可借数不能大于馆藏数量，要多于时弹出提示不可大于
+```
+
+**AI 返回结果**：
+```jsx
+// 51种预设分类常量
+const CATEGORIES = [
+  '编程', '文学', '历史', '科学', '小说', '教育', '艺术', '经济',
+  '哲学', '传记', '计算机', '数学', '物理', '化学', '生物', '医学',
+  '法律', '心理', '社会', '政治', '军事', '地理', '天文', '音乐',
+  '电影', '摄影', '美食', '旅行', '运动', '游戏', '漫画', '童话',
+  '诗歌', '散文', '戏剧', '语言', '宗教', '建筑', '设计', '管理',
+  '营销', '金融', '投资', '会计', '农业', '工业', '交通', '环境',
+  '宠物', '育儿', '养生',
+];
+
+// 分类下拉选择 + 自定义输入切换
+const handleCategoryChange = (e) => {
+  const value = e.target.value;
+  if (value === '__custom__') {
+    setCustomCategory(true);  // 切换为自定义输入模式
+  } else {
+    setCustomCategory(false);
+    setFormData(prev => ({ ...prev, category: value }));
+  }
+};
+
+// 可借数量超限弹出提示
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  const newFormData = { ...formData,
+    [name]: parseInt(value) || 0
+  };
+  if (name === 'available_copies' && newFormData.available_copies > newFormData.total_copies) {
+    setShowCopiesAlert(true);  // 显示红色提示
+    setTimeout(() => setShowCopiesAlert(false), 2000);
+  }
+  // 馆藏数量变小时自动调整可借数量
+  if (name === 'total_copies' && newFormData.available_copies > newFormData.total_copies) {
+    newFormData.available_copies = newFormData.total_copies;
+  }
+};
+```
+
+```css
+/* 弹出提示样式 */
+.copiesAlert {
+  position: absolute;
+  top: -44px;
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  animation: slideDown 0.3s ease;
+}
+```
+
+---
+
 ## 使用的 AI 工具
 
 - **Trae IDE AI 助手** - 主要的代码生成和调试工具

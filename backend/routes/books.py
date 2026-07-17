@@ -69,8 +69,13 @@ def create_book():
 
 @books_bp.route("/<int:book_id>", methods=["PUT"])
 def update_book(book_id):
+    data = request.get_json() or {}
+    password = data.get("password", "")
+
+    if password != "20040611":
+        return jsonify({"error": "密码错误，无法编辑"}), 403
+
     book = Book.query.get_or_404(book_id)
-    data = request.get_json()
 
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -99,6 +104,12 @@ def update_book(book_id):
 
 @books_bp.route("/<int:book_id>", methods=["DELETE"])
 def delete_book(book_id):
+    data = request.get_json() or {}
+    password = data.get("password", "")
+
+    if password != "20040611":
+        return jsonify({"error": "密码错误，无法删除"}), 403
+
     book = Book.query.get_or_404(book_id)
     db.session.delete(book)
     db.session.commit()
