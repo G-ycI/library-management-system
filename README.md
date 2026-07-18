@@ -2,6 +2,8 @@
 
 一个基于 Next.js + Flask 的全栈图书管理系统，提供图书的增删改查、拼音搜索、数据统计、密码保护等功能。
 
+**线上演示地址**：https://my-library-system-one.vercel.app  （Vercel 部署，国内网络可能访问不稳定，建议本地运行）
+
 ## 项目介绍
 
 本项目是一个现代化的图书管理系统，采用前后端分离架构。前端使用 Next.js 构建响应式用户界面，后端使用 Flask 提供 RESTful API 服务，数据存储采用 SQLite 数据库。系统支持图书信息的完整生命周期管理，包括新增、查询、修改、删除，以及按关键词搜索（支持拼音首字母搜索）、分类筛选和数据统计面板。删除和编辑操作需密码验证，确保数据安全。系统内置 33 本图书数据，涵盖 33 种不同分类，并提供 51 种预设分类（每种分类配有独立图标），同时支持自定义分类输入。
@@ -331,12 +333,36 @@ npm run dev
 
 ## 部署说明
 
-### 后端部署（示例：Vercel / Railway / 自建服务器）
+### Vercel 部署（推荐，前后端一体）
+
+本项目支持通过 Vercel Serverless Functions 实现前后端一体部署，无需单独部署后端。
+
+**部署步骤**：
+1. 将项目代码推送到 GitHub 仓库
+2. 在 Vercel 中导入 GitHub 仓库
+3. 设置 Root Directory 为 `frontend`
+4. Framework Preset 选择 `Next.js`
+5. 点击 Deploy 等待部署完成
+
+**部署后 API 接口**：
+- `GET /api/books` - 获取图书列表
+- `GET /api/books/[id]` - 获取图书详情
+- `POST /api/books` - 新增图书
+- `PUT /api/books/[id]` - 更新图书（需密码验证）
+- `DELETE /api/books/[id]` - 删除图书（需密码验证）
+- `GET /api/books/categories` - 获取分类列表
+- `GET /api/books/stats` - 获取统计数据
+
+> **说明**：Vercel 部署版本使用内存数据存储，重启后数据会重置为初始 33 本图书。
+
+### 本地部署（Flask + Next.js）
+
+#### 后端部署（示例：Railway / 自建服务器）
 1. 设置环境变量 `DATABASE_URL` 为生产数据库地址
 2. 设置环境变量 `SECRET_KEY` 为安全密钥
 3. 使用 Gunicorn 等 WSGI 服务器部署：`gunicorn app:app`
 
-### 前端部署（示例：Vercel / Netlify）
+#### 前端部署（示例：Netlify）
 1. 修改 `next.config.js` 中的 API 代理地址为后端线上地址
 2. 构建生产版本：`npm run build`
 3. 启动生产服务：`npm start`

@@ -927,6 +927,68 @@ pause
 
 ---
 
+## Prompt 17：Vercel Serverless Functions 部署
+
+**对应功能**：线上部署、Serverless API  
+**涉及文件**：`frontend/pages/api/books/`、`vercel.json`、`README.md`
+
+**Prompt 内容**：
+```
+线上部署访问 URL怎么搞
+我采用方案2：全部用 Vercel
+检查现在要如何线上部署访问 URL
+```
+
+**AI 返回结果**：
+```
+方案：全部用 Vercel（前后端一体部署，无需单独的后端服务）
+
+实现思路：
+1. 将 Flask 后端的 API 接口用 Node.js 重写，放到 Next.js 的 pages/api/ 目录下
+2. 利用 Vercel Serverless Functions 自动部署 API
+3. 数据存储改用内存（因为 Vercel Serverless 无法连接本地 SQLite）
+4. 内置 33 本初始图书数据，确保部署后即可访问
+
+前端部署配置（vercel.json）：
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
+}
+
+API 接口（pages/api/books/index.js）：
+- GET /api/books - 获取图书列表（支持分页、搜索、分类筛选）
+- POST /api/books - 新增图书
+- GET /api/books/stats - 获取统计数据
+- GET /api/books/categories - 获取分类列表
+- GET /api/books/[id] - 获取图书详情
+- PUT /api/books/[id] - 更新图书（需密码验证）
+- DELETE /api/books/[id] - 删除图书（需密码验证）
+
+拼音首字母搜索（Node.js 实现）：
+function getPinyinInitials(text) {
+  // 自实现的拼音首字母映射，无需额外依赖
+  const pinyinMap = {
+    '活': 'h', '着': 'z', '三': 's', '体': 't', ...
+  };
+  return text.split('').map(ch => pinyinMap[ch] || ch).join('');
+}
+
+部署步骤：
+1. 将代码推送到 GitHub
+2. Vercel 导入仓库，Root Directory 设为 frontend
+3. Framework 选择 Next.js
+4. 点击 Deploy 等待构建完成
+
+部署结果：
+- 项目地址：https://my-library-system-one.vercel.app
+- 所有 API 接口通过 Vercel Serverless Functions 提供服务
+- 数据使用内存存储，重启后重置为初始33本图书
+```
+
+---
+
 ## 使用的 AI 工具
 
 - **Trae IDE AI 助手** - 主要的代码生成和调试工具
