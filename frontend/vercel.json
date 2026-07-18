@@ -1,13 +1,5 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "functions": {
-    "pages/api/**/*.js": {
-      "runtime": "@vercel/node@3.0.0"
-    }
-  },
-  "env": {
-    "TURSO_DATABASE_URL": "@turso-database-url",
-    "TURSO_AUTH_TOKEN": "@turso-auth-token"
-  }
+  "framework": "nextjs"
 }
