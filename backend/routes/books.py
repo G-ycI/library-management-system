@@ -1,36 +1,66 @@
 from flask import Blueprint, request, jsonify
 from models import db, Book
+from pypinyin import lazy_pinyin, Style
 
 books_bp = Blueprint("books", __name__, url_prefix="/api/books")
+
+
+def _get_initials(text):
+    """获取文本的拼音首字母，如"活着"->"hz" """
+    if not text:
+        return ""
+    return "".join(lazy_pinyin(text, style=Style.FIRST_LETTER))
+
+
+def _match_search(book, keyword):
+    """检查图书是否匹配搜索词（支持中文、拼音首字母）"""
+    keyword = keyword.lower()
+    title = (book.title or "").lower()
+    author = (book.author or "").lower()
+    title_initials = _get_initials(book.title).lower()
+    author_initials = _get_initials(book.author).lower()
+
+    return (
+        keyword in title
+        or keyword in author
+        or keyword in title_initials
+        or keyword in author_initials
+    )
 
 
 @books_bp.route("", methods=["GET"])
 def get_books():
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = request.args.get("per_page", 8, type=int)
     search = request.args.get("search", "", type=str)
     category = request.args.get("category", "", type=str)
 
     query = Book.query
 
-    if search:
-        query = query.filter(
-            (Book.title.like(f"%{search}%")) | (Book.author.like(f"%{search}%"))
-        )
-
     if category:
         query = query.filter(Book.category == category)
 
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    books = pagination.items
+    if search:
+        # 拼音搜索需在 Python 层面过滤（SQL 无法处理拼音转换）
+        all_books = query.all()
+        filtered = [b for b in all_books if _match_search(b, search)]
+        total = len(filtered)
+        pages = max(1, (total + per_page - 1) // per_page)
+        start = (page - 1) * per_page
+        books = filtered[start : start + per_page]
+    else:
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        books = pagination.items
+        total = pagination.total
+        pages = pagination.pages
 
     return jsonify(
         {
             "books": [book.to_dict() for book in books],
-            "total": pagination.total,
+            "total": total,
             "page": page,
             "per_page": per_page,
-            "pages": pagination.pages,
+            "pages": pages,
         }
     )
 
@@ -121,3 +151,47 @@ def get_categories():
     categories = db.session.query(Book.category).distinct().all()
     category_list = [c[0] for c in categories if c[0]]
     return jsonify({"categories": category_list})
+
+
+@books_bp.route("/stats", methods=["GET"])
+def get_stats():
+    """获取图书统计数据"""
+    from sqlalchemy import func
+
+    # 总图书数
+    total_books = Book.query.count()
+
+    # 总分类数
+    total_categories = db.session.query(func.count(func.distinct(Book.category))).scalar()
+
+    # 总馆藏数量
+    total_copies = db.session.query(func.sum(Book.total_copies)).scalar() or 0
+
+    # 总可借数量
+    available_copies = db.session.query(func.sum(Book.available_copies)).scalar() or 0
+
+    # 已借出数量
+    borrowed_copies = total_copies - available_copies
+
+    # 可借比例
+    available_ratio = round(available_copies / total_copies * 100, 1) if total_copies > 0 else 0
+
+    # 各分类图书数量（取前6个）
+    category_stats = (
+        db.session.query(Book.category, func.count(Book.id))
+        .group_by(Book.category)
+        .order_by(func.count(Book.id).desc())
+        .limit(6)
+        .all()
+    )
+    category_distribution = [{"category": c[0], "count": c[1]} for c in category_stats if c[0]]
+
+    return jsonify({
+        "total_books": total_books,
+        "total_categories": total_categories,
+        "total_copies": total_copies,
+        "available_copies": available_copies,
+        "borrowed_copies": borrowed_copies,
+        "available_ratio": available_ratio,
+        "category_distribution": category_distribution,
+    })

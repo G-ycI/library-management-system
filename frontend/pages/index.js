@@ -8,18 +8,27 @@ export default function Home() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('');
   const [categories, setCategories] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     fetchCategories();
+    fetchStats();
   }, []);
+
+  // 搜索防抖：输入停止 300ms 后才发请求
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     fetchBooks();
-  }, [search, category, page]);
+  }, [debouncedSearch, category, page]);
 
   const fetchCategories = async () => {
     try {
@@ -31,14 +40,24 @@ export default function Home() {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/books/stats');
+      const data = await res.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
   const fetchBooks = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page,
-        per_page: 6,
+        per_page: 8,
       });
-      if (search) params.append('search', search);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       if (category) params.append('category', category);
 
       const res = await fetch(`/api/books?${params}`);
@@ -63,7 +82,7 @@ export default function Home() {
     setPage(1);
   };
 
-  const totalPages = Math.ceil(total / 6);
+  const totalPages = Math.ceil(total / 8);
 
   return (
     <div>
@@ -75,13 +94,59 @@ export default function Home() {
       <main className="container">
         <div className={styles.mainContent}>
           <h1 className={styles.pageTitle}>图书列表</h1>
-          <p className={styles.subtitle}>共 {total} 本图书</p>
+
+          {/* 数据统计面板 */}
+          {stats && (
+            <div className={styles.statsPanel}>
+              <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>📚</div>
+                  <div className={styles.statInfo}>
+                    <div className={styles.statValue}>{stats.total_books}</div>
+                    <div className={styles.statLabel}>图书总数</div>
+                  </div>
+                </div>
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>🏷️</div>
+                  <div className={styles.statInfo}>
+                    <div className={styles.statValue}>{stats.total_categories}</div>
+                    <div className={styles.statLabel}>分类数量</div>
+                  </div>
+                </div>
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>📦</div>
+                  <div className={styles.statInfo}>
+                    <div className={styles.statValue}>{stats.total_copies}</div>
+                    <div className={styles.statLabel}>馆藏总量</div>
+                  </div>
+                </div>
+                <div className={styles.statCard}>
+                  <div className={styles.statIcon}>✅</div>
+                  <div className={styles.statInfo}>
+                    <div className={styles.statValue}>{stats.available_copies}</div>
+                    <div className={styles.statLabel}>可借数量</div>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.statsFooter}>
+                <div className={styles.ratioBar}>
+                  <div 
+                    className={styles.ratioFill} 
+                    style={{ width: `${stats.available_ratio}%` }}
+                  ></div>
+                </div>
+                <div className={styles.ratioText}>
+                  可借比例 {stats.available_ratio}% | 已借出 {stats.borrowed_copies} 本
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className={styles.filters}>
             <div className={styles.searchBox}>
               <input
                 type="text"
-                placeholder="搜索书名或作者..."
+                placeholder="搜索书名、作者或拼音..."
                 value={search}
                 onChange={handleSearch}
                 className={styles.searchInput}

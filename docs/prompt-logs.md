@@ -665,6 +665,268 @@ const handleChange = (e) => {
 
 ---
 
+## Prompt 12：数据统计面板
+
+**对应功能**：首页数据统计展示  
+**涉及文件**：`backend/routes/books.py`、`frontend/pages/index.js`、`frontend/styles/Home.module.css`
+
+**Prompt 内容**：
+```
+新增一个数据统计面板
+```
+
+**AI 返回结果**：
+```python
+# backend/routes/books.py - 新增统计接口
+@books_bp.route("/stats", methods=["GET"])
+def get_stats():
+    """获取图书统计数据"""
+    from sqlalchemy import func
+
+    total_books = Book.query.count()
+    total_categories = db.session.query(func.count(func.distinct(Book.category))).scalar()
+    total_copies = db.session.query(func.sum(Book.total_copies)).scalar() or 0
+    available_copies = db.session.query(func.sum(Book.available_copies)).scalar() or 0
+    borrowed_copies = total_copies - available_copies
+    available_ratio = round(available_copies / total_copies * 100, 1) if total_copies > 0 else 0
+
+    # 各分类图书数量（取前6个）
+    category_stats = (
+        db.session.query(Book.category, func.count(Book.id))
+        .group_by(Book.category)
+        .order_by(func.count(Book.id).desc())
+        .limit(6)
+        .all()
+    )
+    category_distribution = [{"category": c[0], "count": c[1]} for c in category_stats if c[0]]
+
+    return jsonify({
+        "total_books": total_books,
+        "total_categories": total_categories,
+        "total_copies": total_copies,
+        "available_copies": available_copies,
+        "borrowed_copies": borrowed_copies,
+        "available_ratio": available_ratio,
+        "category_distribution": category_distribution,
+    })
+```
+
+```jsx
+// frontend/pages/index.js - 统计面板组件
+{stats && (
+  <div className={styles.statsPanel}>
+    <div className={styles.statsGrid}>
+      <div className={styles.statCard}>
+        <div className={styles.statIcon}>📚</div>
+        <div className={styles.statInfo}>
+          <div className={styles.statValue}>{stats.total_books}</div>
+          <div className={styles.statLabel}>图书总数</div>
+        </div>
+      </div>
+      {/* 分类数量、馆藏总量、可借数量卡片... */}
+    </div>
+    <div className={styles.statsFooter}>
+      <div className={styles.ratioBar}>
+        <div className={styles.ratioFill}
+          style={{ width: `${stats.available_ratio}%` }}
+        ></div>
+      </div>
+      <div className={styles.ratioText}>
+        可借比例 {stats.available_ratio}% | 已借出 {stats.borrowed_copies} 本
+      </div>
+    </div>
+  </div>
+)}
+```
+
+---
+
+## Prompt 13：图书数据扩展
+
+**对应功能**：扩充图书种子数据  
+**涉及文件**：`backend/seed.py`
+
+**Prompt 内容**：
+```
+帮我增加到3页的图书量，分别要不同的分类
+```
+
+**AI 返回结果**：
+```python
+# backend/seed.py - 从6本扩展到33本，涵盖33种不同分类
+sample_books = [
+    # 原有6本...
+    {"title": "三体", "author": "刘慈欣", "category": "小说", ...},
+    {"title": "教育学", "author": "王道俊", "category": "教育", ...},
+    {"title": "艺术的故事", "author": "贡布里希", "category": "艺术", ...},
+    {"title": "经济学原理", "author": "曼昆", "category": "经济", ...},
+    {"title": "苏菲的世界", "author": "乔斯坦·贾德", "category": "哲学", ...},
+    {"title": "史蒂夫·乔布斯传", "author": "沃尔特·艾萨克森", "category": "传记", ...},
+    {"title": "数学之美", "author": "吴军", "category": "数学", ...},
+    {"title": "时间简史", "author": "史蒂芬·霍金", "category": "物理", ...},
+    # ... 共33本，涵盖编程、计算机、科学、文学、历史、小说、教育、艺术、
+    # 经济、哲学、传记、数学、物理、化学、生物、医学、法律、心理、社会、
+    # 政治、军事、地理、天文、音乐、电影、摄影、美食、旅行、运动、游戏、
+    # 漫画、童话、诗歌等33种分类
+]
+
+# 添加 db.drop_all() 确保数据重置
+db.drop_all()
+db.create_all()
+```
+
+---
+
+## Prompt 14：每页显示数量调整与分页修复
+
+**对应功能**：分页优化  
+**涉及文件**：`backend/routes/books.py`、`frontend/pages/index.js`
+
+**Prompt 内容**：
+```
+为什么不能8个
+后端也改为8本
+空白的第6页要消除
+```
+
+**AI 返回结果**：
+```python
+# backend/routes/books.py - 默认每页数量从10改为8
+per_page = request.args.get("per_page", 8, type=int)
+```
+
+```jsx
+// frontend/pages/index.js - 每页数量和分页计算同步改为8
+const params = new URLSearchParams({
+  page,
+  per_page: 8,  // 从6改为8
+});
+const totalPages = Math.ceil(total / 8);  // 从6改为8
+```
+
+说明：33本图书，每页8本，共5页（前4页各8本，第5页1本），消除了原先每页6本时产生的空白第6页。
+
+---
+
+## Prompt 15：拼音首字母搜索
+
+**对应功能**：拼音搜索  
+**涉及文件**：`backend/routes/books.py`、`backend/requirements.txt`、`frontend/pages/index.js`
+
+**Prompt 内容**：
+```
+搜索只要输入一个字母下面就弹出书名中有这个字母的拼音的书等等
+我只要首字母，不是完全的拼音
+```
+
+**AI 返回结果**：
+```python
+# backend/requirements.txt - 新增pypinyin依赖
+pypinyin==0.55.0
+
+# backend/routes/books.py - 拼音首字母搜索
+from pypinyin import lazy_pinyin, Style
+
+def _get_initials(text):
+    """获取文本的拼音首字母，如"活着"->"hz" """
+    if not text:
+        return ""
+    return "".join(lazy_pinyin(text, style=Style.FIRST_LETTER))
+
+def _match_search(book, keyword):
+    """检查图书是否匹配搜索词（支持中文、拼音首字母）"""
+    keyword = keyword.lower()
+    title = (book.title or "").lower()
+    author = (book.author or "").lower()
+    title_initials = _get_initials(book.title).lower()
+    author_initials = _get_initials(book.author).lower()
+
+    return (
+        keyword in title
+        or keyword in author
+        or keyword in title_initials
+        or keyword in author_initials
+    )
+
+# 搜索逻辑改为Python层面过滤（SQL无法处理拼音转换）
+if search:
+    all_books = query.all()
+    filtered = [b for b in all_books if _match_search(b, search)]
+    total = len(filtered)
+    pages = max(1, (total + per_page - 1) // per_page)
+    start = (page - 1) * per_page
+    books = filtered[start : start + per_page]
+```
+
+```jsx
+// frontend/pages/index.js - 搜索防抖优化
+const [debouncedSearch, setDebouncedSearch] = useState('');
+
+// 搜索防抖：输入停止 300ms 后才发请求
+useEffect(() => {
+  const timer = setTimeout(() => setDebouncedSearch(search), 300);
+  return () => clearTimeout(timer);
+}, [search]);
+
+useEffect(() => {
+  fetchBooks();
+}, [debouncedSearch, category, page]);  // 使用防抖后的搜索词
+```
+
+验证结果：
+- 输入 `hz` → 匹配"活着" ✓
+- 输入 `st` → 匹配"三体"等 ✓
+- 输入 `huo` → 无结果（仅匹配首字母，不匹配完整拼音） ✓
+
+---
+
+## Prompt 16：一键启动脚本
+
+**对应功能**：项目快速启动  
+**涉及文件**：`start.bat`、`stop.bat`
+
+**Prompt 内容**：
+```
+可以让其自带启动所需要的，每次打开即可启动
+```
+
+**AI 返回结果**：
+```batch
+@echo off
+chcp 65001 >nul
+title Library Management System
+
+set "NODE_DIR=C:\Users\20475\.workbuddy\binaries\node\versions\22.22.2"
+set "PROJECT_DIR=%~dp0"
+set "PATH=%NODE_DIR%;%PATH%"
+
+echo [1/3] Starting Backend (Flask)...
+cd /d "%PROJECT_DIR%backend"
+start "Backend" cmd /k "set PATH=%NODE_DIR%;%%PATH%% && python app.py"
+
+timeout /t 3 /nobreak >nul
+
+echo [2/3] Starting Frontend (Next.js)...
+cd /d "%PROJECT_DIR%frontend"
+start "Frontend" cmd /k "set PATH=%NODE_DIR%;%%PATH%% && npm run dev"
+
+timeout /t 8 /nobreak >nul
+
+echo [3/3] Opening Browser...
+start http://localhost:3000
+```
+
+```batch
+# stop.bat - 停止所有相关进程
+@echo off
+taskkill /F /IM python.exe /T 2>nul
+taskkill /F /IM node.exe /T 2>nul
+echo All services stopped.
+pause
+```
+
+---
+
 ## 使用的 AI 工具
 
 - **Trae IDE AI 助手** - 主要的代码生成和调试工具
