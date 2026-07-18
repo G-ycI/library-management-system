@@ -1,0 +1,14 @@
+{
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/.next",
+  "framework": "nextjs",
+  "functions": {
+    "frontend/pages/api/**/*.js": {
+      "runtime": "@vercel/node@3.0.0"
+    }
+  },
+  "env": {
+    "TURSO_DATABASE_URL": "@turso-database-url",
+    "TURSO_AUTH_TOKEN": "@turso-auth-token"
+  }
+}
